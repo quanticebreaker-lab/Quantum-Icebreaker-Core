@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-RLHKH0VGSK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-RLHKH0VGSK');
+</script>
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QUANTUM ICEBREAKER</title>
+<meta name="description" content="Проект QUANTUM ICEBREAKER исследует, как сознание формирует реальность. Присоединяйтесь к экспедиции, чтобы взломать лед старых догм.">
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- AOS Library -->
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+<div class="space-x-4">
+  <a href="../index.html" class="text-gray-400 hover:text-white">EN</a>
+</div>
+
+<style>
+/* Parallax background */
+.parallax {
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+</style>
+</head>
+<body class="text-white font-sans bg-black">
+
+<style>
+  /* ... ваш существующий стиль .parallax ... */
+
+  /* Адаптация для мобильных устройств */
+  @media (max-width: 768px) {
+    .parallax {
+      background-attachment: scroll; /* Явно отключаем 'фиксацию' на мобильных */
+      background-position: center center; /* Убедимся, что фон всегда центрирован */
+    }
+  }
+</style>
+
+<!-- Hero Section with Parallax -->
+<section class="relative h-screen w-full flex items-center justify-center parallax" style="background-image: url('background.png');">
+  <div class="bg-black/60 absolute inset-0"></div>
+  <div class="relative z-10 text-center max-w-3xl px-4" data-aos="fade-up">
+    <h1 class="text-3xl md:text-5xl font-bold mb-6">Вы — не просто точка во Вселенной. Вы — точка отсчета своей Вселенной.</h1>
+
+  <p id="typewriter"class="text-lg md:text-xl mb-8" whitespace-pre-line"></p>
+
+
+    <a href="#form" class="inline-block px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-semibold transition">Войти в состав экипажа</a>
+  </div>
+</section>
+
+
+<!-- Principles Section -->
+<section class="py-20 bg-gray-900" id="principles">
+  <div class="max-w-5xl mx-auto px-6">
+    <h2 class="text-3xl md:text-4xl font-bold text-center mb-12" data-aos="fade-up"> Ключевые принципы проекта</h2>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="bg-gray-800 p-6 rounded-2xl shadow-lg" data-aos="fade-right">
+        <h3 class="text-xl font-semibold mb-4">Принцип 1: Биологическая основа</h3>
+        <p>Ваша точка отсчета закодирована в Геноме. Мы рассматриваем его не просто как «чертеж тела», а как древнейший механизм восприятия и интерпретации. Геном — это уникальная призма, через которую Вселенная обретает форму и смысл.</p>
+      </div>
+      <div class="bg-gray-800 p-6 rounded-2xl shadow-lg" data-aos="fade-up">
+        <h3 class="text-xl font-semibold mb-4">Принцип 2: Физическая основа</h3>
+        <p>Вселенную определяют не объекты, а отношения. Реальность — это не склад готовых вещей. Это динамичная сеть взаимосвязей, которая «собирается» в момент наблюдения. Вы не следите за объектами — вы устанавливаете отношения, которые порождают воспринимаемые свойства.</p>
+      </div>
+      <div class="bg-gray-800 p-6 rounded-2xl shadow-lg" data-aos="fade-left">
+        <h3 class="text-xl font-semibold mb-4">Принцип 3: Механизм действия</h3>
+        <p>Восприятие реальности — это акт измерения, а любое измерение требует эталона. Выбор системы координат, масштаба и критериев сравнения — это фундаментальный акт, который превращает поле потенциальностей в упорядоченную, наблюдаемую Вселенную.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- Video Section -->
+<section class="py-20 bg-black" id="videos">
+  <div class="max-w-6xl mx-auto px-6">
+    <h2 class="text-3xl md:text-4xl font-bold text-center mb-12" data-aos="fade-up">
+      Видео-экспедиция
+    </h2>
+
+    <div class="relative">
+      <!-- Стрелка влево -->
+      <button id="prevBtn" class="absolute left-0 top-1/2 -translate-y-1/2 bg-gray-800/70 hover:bg-gray-700 text-white p-3 rounded-full z-10">
+        ◀
+      </button>
+
+      <!-- Скролл-контейнер -->
+      <div id="video-slider" class="flex space-x-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-6 px-12">
+        
+        <!-- Видео 1 -->
+        <div class="flex-none w-80 snap-center transition-transform duration-300" data-aos="zoom-in">
+          <video class="w-full h-48 rounded-2xl shadow-lg cursor-pointer" poster="video1-poster.png">
+            <source src="video1.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <!-- Видео 2 -->
+        <div class="flex-none w-80 snap-center transition-transform duration-300" data-aos="zoom-in" data-aos-delay="100">
+          <video class="w-full h-48 rounded-2xl shadow-lg cursor-pointer" poster="video2-poster.png">
+            <source src="video2.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <!-- Видео 3 -->
+        <div class="flex-none w-80 snap-center transition-transform duration-300" data-aos="zoom-in" data-aos-delay="200">
+          <video class="w-full h-48 rounded-2xl shadow-lg cursor-pointer" poster="video3-poster.png">
+            <source src="video3.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <!-- Видео 4 -->
+        <div class="flex-none w-80 snap-center transition-transform duration-300" data-aos="zoom-in" data-aos-delay="300">
+          <video class="w-full h-48 rounded-2xl shadow-lg cursor-pointer" poster="video4-poster.png">
+            <source src="video4.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <!-- Видео 5 -->
+        <div class="flex-none w-80 snap-center transition-transform duration-300" data-aos="zoom-in" data-aos-delay="400">
+          <video class="w-full h-48 rounded-2xl shadow-lg cursor-pointer" poster="video5-poster.png">
+            <source src="video5.mp4" type="video/mp4">
+          </video>
+        </div>
+
+      </div>
+
+      <!-- Стрелка вправо -->
+      <button id="nextBtn" class="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-800/70 hover:bg-gray-700 text-white p-3 rounded-full z-10">
+        ▶
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Lightbox для просмотра видео -->
+<div id="lightbox" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50">
+  <div class="relative w-11/12 md:w-3/4 lg:w-2/3">
+    <button id="closeLightbox" class="absolute -top-12 right-0 text-white text-3xl hover:text-gray-300">✖</button>
+    <video id="lightboxVideo" controls class="w-full h-[70vh] rounded-2xl shadow-lg"></video>
+  </div>
+</div>
+
+<script>
+AOS.init({
+  duration: 1000,
+  once: true
+});
+
+// Навигация стрелками
+const slider = document.getElementById("video-slider");
+document.getElementById("prevBtn").addEventListener("click", () => {
+  slider.scrollBy({ left: -300, behavior: "smooth" });
+});
+document.getElementById("nextBtn").addEventListener("click", () => {
+  slider.scrollBy({ left: 300, behavior: "smooth" });
+});
+
+// Lightbox видео
+const lightbox = document.getElementById("lightbox");
+const lightboxVideo = document.getElementById("lightboxVideo");
+const closeLightbox = document.getElementById("closeLightbox");
+
+slider.querySelectorAll("video").forEach(video => {
+  video.addEventListener("click", () => {
+    lightbox.classList.remove("hidden");
+    lightbox.classList.add("flex");
+    lightboxVideo.src = video.querySelector("source").src;
+    lightboxVideo.play();
+  });
+});
+
+closeLightbox.addEventListener("click", () => {
+  lightbox.classList.add("hidden");
+  lightbox.classList.remove("flex");
+  lightboxVideo.pause();
+  lightboxVideo.src = "";
+});
+
+// Закрытие по клику вне видео
+lightbox.addEventListener("click", (e) => {
+  if (e.target === lightbox) {
+    lightbox.classList.add("hidden");
+    lightbox.classList.remove("flex");
+    lightboxVideo.pause();
+    lightboxVideo.src = "";
+  }
+});
+</script>
+
+<!-- Call to Action Section -->
+<section class="py-20 bg-black" id="form">
+  <div class="max-w-3xl mx-auto px-6 text-center" data-aos="zoom-in">
+    <h2 class="text-3xl md:text-4xl font-bold mb-6">Взломаем лед старых догм. Присоединяйтесь к «QUANTUM ICEBREAKER».</h2>
+    <p class="mb-10">Если эти принципы находят у вас отклик, значит, мы ищем одно и то же. Наш полный манифест находится в разработке и будет доступен ядру сообщества, которое мы формируем прямо сейчас. Оставьте свои данные, чтобы первыми получить доступ к нашим материалам и стать частью экспедиции.</p>
+    
+   <form id="crewForm" class="space-y-6 text-left">
+  <div>
+    <label class="block mb-2">Ваш позывной</label>
+    <input type="text" name="name" required class="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700" />
+  </div>
+  <div>
+    <label class="block mb-2">Ваш Email</label>
+    <input type="email" name="email" required class="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700" />
+  </div>
+  <div>
+    <label class="block mb-2">Какие ваши сильные стороны могут быть полезны в экспедиции?</label>
+    <textarea name="message" class="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700" rows="4"></textarea>
+  </div>
+  
+  <div class="flex items-start space-x-3 mt-4">
+  <input id="terms-agree" name="terms-agree" type="checkbox" required class="bg-gray-700 border-gray-600 rounded mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500">
+  <label for="terms-agree" class="text-sm text-gray-400">
+    I have read and agree to the 
+    <a href="../terms/index.html" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">Terms of Service</a> 
+    and the 
+    <a href="../privacy/index.html" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">Privacy Policy</a>.
+  </label>
+</div>
+  
+  <div class="text-sm text-gray-400 my-4">
+  <strong>Важное примечание:</strong> Чтобы вы гарантированно получали все важные обновления и анонсы экспериментов, мы настоятельно рекомендуем использовать для регистрации почтовый ящик от Gmail (@gmail.com). К сожалению, агрессивные спам-фильтры некоторых других сервисов (например, Mail.ru) могут ошибочно блокировать наши письма или отправлять их в спам.
+</div>
+  
+  <button type="submit" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-semibold transition">
+    Войти в состав экипажа
+  </button>
+</form>
+
+
+
+<!-- Footer -->
+<footer class="mt-16 py-8 bg-gray-900 text-center text-gray-400 text-sm" data-aos="fade-up">
+  <div class="space-x-6 mb-4">
+    <a href="../privacy/index.html" class="hover:text-white">Privacy Policy</a>
+    <a href="../terms/index.html" class="hover:text-white">Terms of Service</a>
+  </div>
+  <p>© 2025 QUANTUM ICEBREAKER</p>
+</footer>
+
+
+<script>
+AOS.init({
+  duration: 1000,
+  once: true
+});
+
+// Автопрокрутка видеоленты
+const slider = document.getElementById("video-slider");
+let scrollAmount = 0;
+setInterval(() => {
+  if (slider.scrollLeft + slider.clientWidth >= slider.scrollWidth) {
+    slider.scrollTo({ left: 0, behavior: "smooth" });
+  } else {
+    slider.scrollBy({ left: 300, behavior: "smooth" });
+  }
+}, 4000); // каждые 4 секунды
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const text = "Все, что вы воспринимаете, начинается с вас. Вы и есть тот «механизм», который воплощает безграничные возможности в конкретную реальность. Давайте исследовать вместе, как он работает. Это — миссия проекта «QUANTUM ICEBREAKER»";
+  const speed = 80; // скорость печати (мс за символ)
+  let i = 0;
+
+  const target = document.getElementById("typewriter");
+  target.innerHTML = "<span id='typed'></span><span id='cursor'>|</span>";
+
+  function type() {
+    if (i < text.length) {
+      document.getElementById("typed").textContent += text.charAt(i);
+      i++;
+      setTimeout(type, speed);
+    }
+  }
+
+  type();
+
+  // мигающий курсор
+  setInterval(() => {
+    const cursor = document.getElementById("cursor");
+    cursor.style.visibility = (cursor.style.visibility === "hidden") ? "visible" : "hidden";
+  }, 500);
+});
+</script>
+
+<div id="successModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50">
+  <div class="bg-gray-800 text-white p-8 rounded-3xl shadow-lg max-w-sm w-full text-center" data-aos="zoom-in">
+    <div class="mx-auto bg-blue-600 h-16 w-16 flex items-center justify-center rounded-full text-3xl">
+      ✓
+    </div>
+    <h2 class="text-2xl font-bold mt-6 mb-3">Связь установлена</h2>
+    <p class="text-gray-300 mb-8">Ваша заявка принята на борт. Мы анализируем данные и скоро выйдем на связь для первого брифинга экспедиции.</p>
+    <button id="closeModal" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-2xl font-semibold transition">
+      Закрыть
+    </button>
+  </div>
+</div>
+
+<script>
+  // Находим элементы модального окна
+  const successModal = document.getElementById("successModal");
+  const closeModal = document.getElementById("closeModal");
+  const crewForm = document.getElementById("crewForm");
+
+  // Функция, чтобы показать окно
+  function showModal() {
+    successModal.classList.remove("hidden");
+    successModal.classList.add("flex");
+  }
+
+  // Функция, чтобы скрыть окно
+  function hideModal() {
+    successModal.classList.add("hidden");
+    successModal.classList.remove("flex");
+  }
+
+  // Слушатель для кнопки закрытия
+  closeModal.addEventListener("click", hideModal);
+
+  // Слушатель для клика по фону
+  successModal.addEventListener("click", (e) => {
+    if (e.target === successModal) {
+      hideModal();
+    }
+  });
+
+  // Обработчик отправки формы
+  crewForm.addEventListener("submit", function(e) {
+    e.preventDefault(); 
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+	
+	// ▼▼▼ НАЧАЛО НОВОГО КОДА ПРОВЕРКИ ▼▼▼
+    const termsCheckbox = document.getElementById("terms-agree");
+    if (!termsCheckbox.checked) {
+      // Переведите текст для русской версии
+      alert("Please confirm that you agree to the Terms and Privacy Policy before proceeding.");
+      return; // Останавливаем отправку формы
+    }
+    // ▲▲▲ КОНЕЦ НОВОГО КОДА ПРОВЕРКИ ▲▲▲
+    
+    // Опционально: показываем состояние загрузки на кнопке
+    submitButton.textContent = "Отправка...";
+    submitButton.disabled = true;
+
+    fetch("https://script.google.com/macros/s/AKfycbwzBpsUBxYFUqeP898APVAHrDrzb_gViKoums2KP0ltwwIM4-aCxvjNRIEQ6GT1DjYVBw/exec", { // <-- УБЕДИТЕСЬ, ЧТО ЗДЕСЬ ВАШ АКТУАЛЬНЫЙ URL
+      method: "POST",
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.status === "success") {
+        this.reset(); // Очищаем форму
+        showModal(); // <-- ПОКАЗЫВАЕМ НАШЕ КРАСИВОЕ ОКНО
+      } else {
+        alert("❌ Ошибка: " + data.message);
+      }
+    })
+    .catch(err => alert("❌ Критическая ошибка. Не удалось связаться с сервером: " + err))
+    .finally(() => {
+        // Возвращаем кнопку в исходное состояние
+        submitButton.textContent = "Войти в состав экипажа";
+        submitButton.disabled = false;
+    });
+  });
+</script>
+
+</body>
+</html>
