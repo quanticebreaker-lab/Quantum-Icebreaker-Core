@@ -18,7 +18,7 @@ diverse, inclusive, and healthy community.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-[INSERT CONTACT METHOD].
+quant.icebreaker@gmail.com
 
 ---
 *(Русская версия ниже)*
@@ -44,4 +44,4 @@ reported to the community leaders responsible for enforcement at
 
 О случаях оскорбительного, преследующего или иного неприемлемого поведения можно
 сообщить лидерам сообщества, ответственным за правоприменение, по адресу
-[INSERT CONTACT METHOD].
+quant.icebreaker@gmail.com
