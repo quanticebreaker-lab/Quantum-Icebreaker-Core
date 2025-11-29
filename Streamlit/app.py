@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import medfilt, savgol_filter, find_peaks, fftconvolve
+from scipy.signal import medfilt, savgol_filter, find_peaks
 import io
 import csv
 import os
@@ -11,7 +11,7 @@ import os
 # CONFIGURATION
 # ==========================================
 st.set_page_config(
-    page_title="Pendulum Analysis V23",
+    page_title="Pendulum V21.2 Web",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -19,9 +19,10 @@ st.set_page_config(
 # Имена файлов по умолчанию
 DEFAULT_FILES = ["run1.csv", "run2.csv", "run3.csv"] 
 
-# --- CSS: FIXED COMPACT LAYOUT ---
+# --- CSS: ULTRA COMPACT LAYOUT ---
 st.markdown("""
         <style>
+               /* Убираем отступы сверху */
                .block-container {
                     padding-top: 1rem !important;
                     padding-bottom: 0rem !important;
@@ -29,17 +30,20 @@ st.markdown("""
                     padding-right: 1rem !important;
                     margin-top: -20px !important;
                 }
-                h1 {
-                    font-size: 1.2rem; 
-                    margin-bottom: 0.2rem;
-                }
+                /* Прячем меню Streamlit */
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
+                
+                /* Компактный текст слайдера */
+                .stSlider p {
+                    font-size: 14px !important;
+                    margin-bottom: -10px !important;
+                }
         </style>
         """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER FUNCTIONS
+# HELPER CLASS FOR FILES
 # ==========================================
 class LocalFile:
     def __init__(self, filename):
@@ -49,6 +53,9 @@ class LocalFile:
         if not os.path.exists(self.path): return None
         with open(self.path, 'rb') as f: return f.read()
 
+# ==========================================
+# ROBUST MATH UTILS (FROM V21.2)
+# ==========================================
 def make_odd(n):
     n = int(n)
     if n < 1: n = 1
@@ -58,8 +65,10 @@ def make_odd(n):
 def safe_savgol(y, window, polyorder, dt=None):
     window = make_odd(window)
     if len(y) < window:
+        if len(y) <= polyorder: return y 
         window = make_odd(len(y))
         if window <= polyorder: window = make_odd(polyorder + 1)
+        if window > len(y): window = len(y) if len(y)%2!=0 else len(y)-1
     if window <= polyorder: return y 
     try:
         if dt: return savgol_filter(y, window, polyorder, deriv=0, delta=dt)
@@ -67,13 +76,15 @@ def safe_savgol(y, window, polyorder, dt=None):
     except: return y
 
 def calculate_adaptive_window(dt, sg_polyorder):
-    window = int(round(0.7 / dt))
+    target_duration = 0.7
+    window = int(round(target_duration / dt))
     window = make_odd(window)
     if window < 5: window = 5
     if window <= sg_polyorder: window = make_odd(sg_polyorder + 1)
     return window
 
 def safe_interp(t, x, t_target):
+    # Interpolates x onto t_target with NaN handling (no extrapolation)
     if len(t) == 0: return np.full_like(t_target, np.nan, dtype=float)
     order = np.argsort(t)
     t_sorted, x_sorted = t[order], x[order]
@@ -86,41 +97,39 @@ def get_sampling_rate(t):
     dt = np.median(np.diff(t))
     return dt if dt > 0 else 0.033
 
-# --- OLD RELIABLE FFT SYNC (FIXED DETREND) ---
-def detrend_linear(sig):
-    if len(sig) < 2: return sig
-    t = np.arange(len(sig))
-    mask = ~np.isnan(sig)
-    if np.sum(mask) < 2: return sig
-    p = np.polyfit(t[mask], sig[mask], 1)
-    return sig - (p[0]*t + p[1])
+# --- SMART SYNC LOGIC (V21.2) ---
+def get_first_major_peak_time(t, x):
+    """
+    Finds the time of the first MAJOR peak (amplitude > 40% of max).
+    Identical to V21.2 script logic.
+    """
+    if len(x) < 5: return None
+    x_clean = x.copy()
+    mask = ~np.isnan(x_clean)
+    if np.sum(mask) < 5: return None
+    
+    x_valid = x_clean[mask]
+    t_valid = t[mask]
+    
+    x_centered = x_valid - np.mean(x_valid)
+    max_amp = np.max(np.abs(x_centered))
+    if max_amp == 0: return t_valid[0]
+    
+    # Strict threshold: Peak must be > 40% of max amplitude
+    peaks, _ = find_peaks(x_centered, height=max_amp * 0.4, distance=10)
+    
+    if len(peaks) > 0:
+        return t_valid[peaks[0]]
+    return t_valid[0]
 
-def sync_signals_fft(t1, x1, t2, x2, dt):
-    if len(t1) < 10 or len(t2) < 10: return 0.0
-    duration = min(t1[-1] - t1[0], t2[-1] - t2[0])
-    if duration <= 0: return 0.0
-    
-    t_uniform = np.arange(0, duration, dt)
-    x1_u = safe_interp(t1 - t1[0], x1, t_uniform)
-    x2_u = safe_interp(t2 - t2[0], x2, t_uniform)
-    
-    # 1. Fill NaNs with mean for correlation
-    mu1, mu2 = np.nanmean(x1_u), np.nanmean(x2_u)
-    x1_u = np.nan_to_num(x1_u, nan=mu1)
-    x2_u = np.nan_to_num(x2_u, nan=mu2)
-    
-    # 2. Detrend & Zero Mean
-    x1_u = detrend_linear(x1_u)
-    x2_u = detrend_linear(x2_u)
-    x1_u -= np.mean(x1_u)
-    x2_u -= np.mean(x2_u)
-    
-    # 3. Correlation
-    corr = fftconvolve(x1_u, x2_u[::-1], mode='full')
-    lags = np.arange(-len(x2_u) + 1, len(x1_u))
-    best_lag = lags[np.argmax(corr)]
-    return best_lag * dt
+def sync_by_first_peak_robust(t1, x1, t2, x2):
+    t_p1 = get_first_major_peak_time(t1, x1)
+    t_p2 = get_first_major_peak_time(t2, x2)
+    if t_p1 is not None and t_p2 is not None:
+        return t_p2 - t_p1
+    return 0.0
 
+# --- ANALYSIS ---
 def pre_calculate_peaks(x):
     if len(x) == 0: return np.array([], dtype=int)
     mask = ~np.isnan(x)
@@ -158,7 +167,7 @@ def get_local_activity(t, x, start, end, threshold):
     return (np.nanmax(seg) - np.nanmin(seg)) > threshold, 0.0
 
 # ==========================================
-# LOAD LOGIC
+# FILE LOADING
 # ==========================================
 def smart_find_column(header, candidates):
     header_lower = [h.lower().strip() for h in header]
@@ -197,9 +206,13 @@ def parse_file_obj(file_obj):
         return np.array([]), np.array([]), np.array([])
     except: return np.array([]), np.array([]), np.array([])
 
+# ==========================================
+# MAIN PROCESS
+# ==========================================
 @st.cache_data
 def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
     raw = []
+    # Load up to 3 files
     for i in range(3):
         if i < len(file_objects):
             t, x, y = parse_file_obj(file_objects[i])
@@ -208,11 +221,12 @@ def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
         else:
             raw.append({'t': [], 'x': [], 'y': [], 'n': f"Run {i+1}"})
 
+    # === SMART SYNC (V21.2) ===
     if auto_sync and len(raw[0]['t']) > 0:
         ref_t, ref_x = raw[0]['t'], raw[0]['x']
         for i in [1, 2]:
             if len(raw[i]['t']) > 0:
-                lag = sync_signals_fft(ref_t, ref_x, raw[i]['t'], raw[i]['x'], resample_dt)
+                lag = sync_by_first_peak_robust(ref_t, ref_x, raw[i]['t'], raw[i]['x'])
                 raw[i]['t'] -= lag
 
     processed = []
@@ -226,53 +240,72 @@ def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
         dt = get_sampling_rate(t)
         win = calculate_adaptive_window(dt, poly)
         
-        if use_med and len(x) > med_k: x, y = medfilt(x, med_k), medfilt(y, med_k)
+        # Median Filter
+        if use_med and len(x) > med_k: 
+            x, y = medfilt(x, med_k), medfilt(y, med_k)
+        
+        # SavGol Filter
         xf, yf = safe_savgol(x, win, poly), safe_savgol(y, win, poly)
+        
+        # Velocity
         vf = savgol_filter(xf, win, poly, deriv=1, delta=dt) if len(xf) > win else np.zeros_like(xf)
+        
+        # Analysis
         pks = pre_calculate_peaks(xf)
         damp = calculate_damping_robust(t, xf, pks)
         processed.append({'t': t, 'x': xf, 'y': yf, 'v': vf, 'peaks': pks, 'damping': damp, 'active': True})
 
+    # Diffs (with NaN support)
     t_com = np.arange(0, max_t, resample_dt)
     xi = [safe_interp(p['t'], p['x'], t_com) for p in processed]
     diffs = {'12': np.abs(xi[0]-xi[1]), '13': np.abs(xi[0]-xi[2]), '23': np.abs(xi[1]-xi[2])}
+    
+    # Smooth diffs
     for k in diffs:
         if len(diffs[k]) > 31 and not np.isnan(diffs[k]).any():
             diffs[k] = savgol_filter(diffs[k], 31, 3)
+            
     return processed, diffs, t_com, max_t
 
-# ==========================================
-# UI
-# ==========================================
 def main():
     st.sidebar.title("Settings")
-    uploaded_files = st.sidebar.file_uploader("Upload CSV", accept_multiple_files=True, type=['csv'])
     
+    # Upload or Default Logic
+    uploaded_files = st.sidebar.file_uploader("Upload CSV", accept_multiple_files=True, type=['csv'])
     files_to_process = []
+    
     if uploaded_files:
         files_to_process = uploaded_files
     else:
         for fname in DEFAULT_FILES:
             if os.path.exists(fname): files_to_process.append(LocalFile(fname))
         if not files_to_process:
-            st.info("⚠️ Upload CSV files or add defaults to GitHub.")
+            st.info("⚠️ Upload CSV files or add 'run1.csv' to GitHub.")
             return
 
-    auto_sync = st.sidebar.checkbox("Auto-Sync Phase", value=True)
+    st.sidebar.caption("Controls")
+    auto_sync = st.sidebar.checkbox("Smart Sync (First Peak)", value=True)
     window_size = st.sidebar.number_input("Window (s)", value=20.0, min_value=1.0)
     
+    with st.sidebar.expander("Filter Params"):
+        resample_dt = st.number_input("DT", value=0.033)
+        sg_poly = st.number_input("Poly", value=3)
+        use_median = st.checkbox("Median", value=True)
+        stop_thresh = st.number_input("Stop Thresh", value=3.0)
+
     vis = [st.sidebar.checkbox(f"R{i+1}", True) for i in range(3)]
     colors, styles = ['b', 'r', 'g'], ['-', '--', '-.']
 
-    # --- HEADER ---
+    # --- SMALL CUSTOM TITLE ---
     st.markdown("""
     <h3 style='text-align: left; font-size: 20px; margin-top: -10px; margin-bottom: 10px;'>
-        Pendulum Analysis V23 (Stable)
+        Pendulum Analysis V21.2 (Smart Sync)
     </h3>
     """, unsafe_allow_html=True)
     
-    processed, diffs, t_common, max_time = process_data(files_to_process, auto_sync, 0.033, 3, 5, True)
+    processed, diffs, t_common, max_time = process_data(files_to_process, auto_sync, resample_dt, sg_poly, 5, use_median)
 
+    # --- LAYOUT: Plots First, Slider Last ---
     plot_cont = st.container()
     ctrl_cont = st.container()
 
@@ -287,9 +320,10 @@ def main():
             for i in range(3):
                 if vis[i] and processed[i]['active']:
                     p = processed[i]
-                    mv, _ = get_local_activity(p['t'], p['x'], start, end, 3.0)
+                    mv, _ = get_local_activity(p['t'], p['x'], start, end, stop_thresh)
                     T, c = calculate_robust_period(p['t'], p['peaks'], start, end) if mv else (None, 0)
                     stats_txt.append(f"**R{i+1}**: Damp={p['damping'][0]:.4f}, T={T:.3f}s" if T else f"**R{i+1}**: Damp={p['damping'][0]:.4f}")
+            
             rms_txt = []
             m_c = (t_common >= start) & (t_common < end)
             for i, j, k in [(0,1,'12'),(0,2,'13'),(1,2,'23')]:
@@ -298,6 +332,7 @@ def main():
                     seg = seg[~np.isnan(seg)]
                     v = np.sqrt(np.mean(seg**2)) if len(seg) > 0 else 0.0
                     rms_txt.append(f"|{i+1}-{j+1}|={v:.2f}")
+            
             st.markdown("  \n".join(stats_txt) + "  \nRMS: " + ", ".join(rms_txt))
 
     # PLOTS (TOP)
@@ -309,6 +344,7 @@ def main():
         ax_er = fig.add_subplot(gs[1, 1:3])
         ax_ph = fig.add_subplot(gs[1, 3])
 
+        # Calc limits (ignoring NaNs)
         all_v = [p['x'] for i, p in enumerate(processed) if vis[i] and p['active']]
         if all_v:
             fx = np.concatenate(all_v)
@@ -336,6 +372,7 @@ def main():
         ax_t.set_xlim(start, end); ax_t.grid(True); ax_t.legend(loc='upper right', fontsize=8)
         ax_t.set_title(f"Time (T={start:.1f}s)", fontsize=10, pad=2)
         ax_t.tick_params(labelsize=8)
+        
         for ax, tit in zip([ax_tr, ax_er, ax_ph], ["Trajectory", "Errors", "Phase"]):
             ax.set_title(tit, fontsize=9, pad=2); ax.grid(True); ax.tick_params(labelsize=7)
         ax_er.set_xlim(start, end)
