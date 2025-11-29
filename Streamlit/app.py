@@ -11,7 +11,7 @@ import os
 # CONFIGURATION
 # ==========================================
 st.set_page_config(
-    page_title="Pendulum V21.2 Web",
+    page_title="Pendulum V25 Web",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -19,10 +19,9 @@ st.set_page_config(
 # Имена файлов по умолчанию
 DEFAULT_FILES = ["run1.csv", "run2.csv", "run3.csv"] 
 
-# --- CSS: ULTRA COMPACT LAYOUT ---
+# --- CSS: COMPACT LAYOUT + BUTTONS FIX ---
 st.markdown("""
         <style>
-               /* Убираем отступы сверху */
                .block-container {
                     padding-top: 1rem !important;
                     padding-bottom: 0rem !important;
@@ -30,20 +29,22 @@ st.markdown("""
                     padding-right: 1rem !important;
                     margin-top: -20px !important;
                 }
-                /* Прячем меню Streamlit */
+                h1 { font-size: 1.2rem; margin-bottom: 0.2rem; }
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
                 
-                /* Компактный текст слайдера */
-                .stSlider p {
-                    font-size: 14px !important;
-                    margin-bottom: -10px !important;
+                /* Центрируем кнопки навигации по вертикали относительно слайдера */
+                div.stButton > button {
+                    height: 100%;
+                    padding-top: 10px;
+                    padding-bottom: 10px;
+                    margin-top: 10px; 
                 }
         </style>
         """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER CLASS FOR FILES
+# HELPER CLASS
 # ==========================================
 class LocalFile:
     def __init__(self, filename):
@@ -54,7 +55,7 @@ class LocalFile:
         with open(self.path, 'rb') as f: return f.read()
 
 # ==========================================
-# ROBUST MATH UTILS (FROM V21.2)
+# MATH UTILS (ROBUST)
 # ==========================================
 def make_odd(n):
     n = int(n)
@@ -65,10 +66,8 @@ def make_odd(n):
 def safe_savgol(y, window, polyorder, dt=None):
     window = make_odd(window)
     if len(y) < window:
-        if len(y) <= polyorder: return y 
         window = make_odd(len(y))
         if window <= polyorder: window = make_odd(polyorder + 1)
-        if window > len(y): window = len(y) if len(y)%2!=0 else len(y)-1
     if window <= polyorder: return y 
     try:
         if dt: return savgol_filter(y, window, polyorder, deriv=0, delta=dt)
@@ -76,15 +75,13 @@ def safe_savgol(y, window, polyorder, dt=None):
     except: return y
 
 def calculate_adaptive_window(dt, sg_polyorder):
-    target_duration = 0.7
-    window = int(round(target_duration / dt))
+    window = int(round(0.7 / dt))
     window = make_odd(window)
     if window < 5: window = 5
     if window <= sg_polyorder: window = make_odd(sg_polyorder + 1)
     return window
 
 def safe_interp(t, x, t_target):
-    # Interpolates x onto t_target with NaN handling (no extrapolation)
     if len(t) == 0: return np.full_like(t_target, np.nan, dtype=float)
     order = np.argsort(t)
     t_sorted, x_sorted = t[order], x[order]
@@ -97,29 +94,19 @@ def get_sampling_rate(t):
     dt = np.median(np.diff(t))
     return dt if dt > 0 else 0.033
 
-# --- SMART SYNC LOGIC (V21.2) ---
+# --- SMART SYNC (First Peak) ---
 def get_first_major_peak_time(t, x):
-    """
-    Finds the time of the first MAJOR peak (amplitude > 40% of max).
-    Identical to V21.2 script logic.
-    """
     if len(x) < 5: return None
     x_clean = x.copy()
     mask = ~np.isnan(x_clean)
     if np.sum(mask) < 5: return None
-    
     x_valid = x_clean[mask]
     t_valid = t[mask]
-    
     x_centered = x_valid - np.mean(x_valid)
     max_amp = np.max(np.abs(x_centered))
     if max_amp == 0: return t_valid[0]
-    
-    # Strict threshold: Peak must be > 40% of max amplitude
     peaks, _ = find_peaks(x_centered, height=max_amp * 0.4, distance=10)
-    
-    if len(peaks) > 0:
-        return t_valid[peaks[0]]
+    if len(peaks) > 0: return t_valid[peaks[0]]
     return t_valid[0]
 
 def sync_by_first_peak_robust(t1, x1, t2, x2):
@@ -206,13 +193,9 @@ def parse_file_obj(file_obj):
         return np.array([]), np.array([]), np.array([])
     except: return np.array([]), np.array([]), np.array([])
 
-# ==========================================
-# MAIN PROCESS
-# ==========================================
 @st.cache_data
 def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
     raw = []
-    # Load up to 3 files
     for i in range(3):
         if i < len(file_objects):
             t, x, y = parse_file_obj(file_objects[i])
@@ -221,7 +204,6 @@ def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
         else:
             raw.append({'t': [], 'x': [], 'y': [], 'n': f"Run {i+1}"})
 
-    # === SMART SYNC (V21.2) ===
     if auto_sync and len(raw[0]['t']) > 0:
         ref_t, ref_x = raw[0]['t'], raw[0]['x']
         for i in [1, 2]:
@@ -240,89 +222,89 @@ def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
         dt = get_sampling_rate(t)
         win = calculate_adaptive_window(dt, poly)
         
-        # Median Filter
-        if use_med and len(x) > med_k: 
-            x, y = medfilt(x, med_k), medfilt(y, med_k)
-        
-        # SavGol Filter
+        if use_med and len(x) > med_k: x, y = medfilt(x, med_k), medfilt(y, med_k)
         xf, yf = safe_savgol(x, win, poly), safe_savgol(y, win, poly)
-        
-        # Velocity
         vf = savgol_filter(xf, win, poly, deriv=1, delta=dt) if len(xf) > win else np.zeros_like(xf)
-        
-        # Analysis
         pks = pre_calculate_peaks(xf)
         damp = calculate_damping_robust(t, xf, pks)
         processed.append({'t': t, 'x': xf, 'y': yf, 'v': vf, 'peaks': pks, 'damping': damp, 'active': True})
 
-    # Diffs (with NaN support)
     t_com = np.arange(0, max_t, resample_dt)
     xi = [safe_interp(p['t'], p['x'], t_com) for p in processed]
     diffs = {'12': np.abs(xi[0]-xi[1]), '13': np.abs(xi[0]-xi[2]), '23': np.abs(xi[1]-xi[2])}
-    
-    # Smooth diffs
     for k in diffs:
         if len(diffs[k]) > 31 and not np.isnan(diffs[k]).any():
             diffs[k] = savgol_filter(diffs[k], 31, 3)
-            
     return processed, diffs, t_com, max_t
 
+# ==========================================
+# UI
+# ==========================================
 def main():
     st.sidebar.title("Settings")
-    
-    # Upload or Default Logic
     uploaded_files = st.sidebar.file_uploader("Upload CSV", accept_multiple_files=True, type=['csv'])
-    files_to_process = []
     
+    files_to_process = []
     if uploaded_files:
         files_to_process = uploaded_files
     else:
         for fname in DEFAULT_FILES:
             if os.path.exists(fname): files_to_process.append(LocalFile(fname))
         if not files_to_process:
-            st.info("⚠️ Upload CSV files or add 'run1.csv' to GitHub.")
+            st.info("⚠️ Upload CSV or add files to GitHub.")
             return
 
-    st.sidebar.caption("Controls")
-    auto_sync = st.sidebar.checkbox("Smart Sync (First Peak)", value=True)
+    auto_sync = st.sidebar.checkbox("Smart Sync", value=True)
     window_size = st.sidebar.number_input("Window (s)", value=20.0, min_value=1.0)
     
-    with st.sidebar.expander("Filter Params"):
-        resample_dt = st.number_input("DT", value=0.033)
-        sg_poly = st.number_input("Poly", value=3)
-        use_median = st.checkbox("Median", value=True)
-        stop_thresh = st.number_input("Stop Thresh", value=3.0)
-
     vis = [st.sidebar.checkbox(f"R{i+1}", True) for i in range(3)]
     colors, styles = ['b', 'r', 'g'], ['-', '--', '-.']
 
-    # --- SMALL CUSTOM TITLE ---
-    st.markdown("""
-    <h3 style='text-align: left; font-size: 20px; margin-top: -10px; margin-bottom: 10px;'>
-        Pendulum Analysis V21.2 (Smart Sync)
-    </h3>
-    """, unsafe_allow_html=True)
+    # Header
+    st.markdown("""<h3 style='text-align: left; font-size: 20px; margin-top: -10px; margin-bottom: 10px;'>
+        Pendulum Analysis V25 (Nav)</h3>""", unsafe_allow_html=True)
     
-    processed, diffs, t_common, max_time = process_data(files_to_process, auto_sync, resample_dt, sg_poly, 5, use_median)
+    processed, diffs, t_common, max_time = process_data(files_to_process, auto_sync, 0.033, 3, 5, True)
 
-    # --- LAYOUT: Plots First, Slider Last ---
     plot_cont = st.container()
     ctrl_cont = st.container()
 
-    # SLIDER & STATS (BOTTOM)
+    # --- CONTROLS: BUTTONS + SLIDER + STATS ---
     with ctrl_cont:
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            start = st.slider("Time (s)", 0.0, max(0.0, max_time - window_size), 0.0, step=0.5)
+        # Initialize session state for slider
+        if 'start_time' not in st.session_state:
+            st.session_state.start_time = 0.0
+            
+        def move_slider(delta):
+            new_val = st.session_state.start_time + delta
+            # Clamp value
+            max_val = max(0.0, max_time - window_size)
+            st.session_state.start_time = max(0.0, min(max_val, new_val))
+
+        # Layout: [ < ] [ SLIDER ] [ > ] [ STATS ]
+        # We use columns: Tiny, Large, Tiny, Medium
+        c_prev, c_slider, c_next, c_stats = st.columns([1, 15, 1, 8])
+        
+        with c_prev:
+            st.button("⏪", on_click=move_slider, args=(-window_size/2,))
+            
+        with c_next:
+            st.button("⏩", on_click=move_slider, args=(window_size/2,))
+            
+        with c_slider:
+            # Bind slider to session_state
+            start = st.slider("Time Navigator", 0.0, max(0.0, max_time - window_size), 
+                              key='start_time', step=0.5, label_visibility="collapsed")
             end = start + window_size
-        with c2:
+            
+        with c_stats:
             stats_txt = []
             for i in range(3):
                 if vis[i] and processed[i]['active']:
                     p = processed[i]
-                    mv, _ = get_local_activity(p['t'], p['x'], start, end, stop_thresh)
+                    mv, _ = get_local_activity(p['t'], p['x'], start, end, 3.0)
                     T, c = calculate_robust_period(p['t'], p['peaks'], start, end) if mv else (None, 0)
-                    stats_txt.append(f"**R{i+1}**: Damp={p['damping'][0]:.4f}, T={T:.3f}s" if T else f"**R{i+1}**: Damp={p['damping'][0]:.4f}")
+                    if T: stats_txt.append(f"**R{i+1}**: Damp={p['damping'][0]:.4f}, T={T:.3f}s")
             
             rms_txt = []
             m_c = (t_common >= start) & (t_common < end)
@@ -333,9 +315,10 @@ def main():
                     v = np.sqrt(np.mean(seg**2)) if len(seg) > 0 else 0.0
                     rms_txt.append(f"|{i+1}-{j+1}|={v:.2f}")
             
-            st.markdown("  \n".join(stats_txt) + "  \nRMS: " + ", ".join(rms_txt))
+            # Show simplified stats
+            st.markdown(f"<div style='font-size: 12px; margin-top: -5px;'>{' | '.join(stats_txt)}<br>RMS: {', '.join(rms_txt)}</div>", unsafe_allow_html=True)
 
-    # PLOTS (TOP)
+    # --- PLOTS ---
     with plot_cont:
         fig = plt.figure(figsize=(14, 5.0))
         gs = fig.add_gridspec(2, 4)
@@ -344,7 +327,6 @@ def main():
         ax_er = fig.add_subplot(gs[1, 1:3])
         ax_ph = fig.add_subplot(gs[1, 3])
 
-        # Calc limits (ignoring NaNs)
         all_v = [p['x'] for i, p in enumerate(processed) if vis[i] and p['active']]
         if all_v:
             fx = np.concatenate(all_v)
