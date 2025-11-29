@@ -11,15 +11,14 @@ import os
 # CONFIGURATION
 # ==========================================
 st.set_page_config(
-    page_title="Pendulum V27 Stable",
+    page_title="Pendulum V28 Fast",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ИМЕНА ФАЙЛОВ НА GITHUB
 DEFAULT_FILES = ["run1.csv", "run2.csv", "run3.csv"] 
 
-# --- CSS ---
+# --- CSS: FIXED LAYOUT ---
 st.markdown("""
         <style>
                .block-container {
@@ -43,7 +42,7 @@ st.markdown("""
         """, unsafe_allow_html=True)
 
 # ==========================================
-# HELPER CLASS
+# UTILS
 # ==========================================
 class LocalFile:
     def __init__(self, filename):
@@ -53,9 +52,6 @@ class LocalFile:
         if not os.path.exists(self.path): return None
         with open(self.path, 'rb') as f: return f.read()
 
-# ==========================================
-# MATH UTILS
-# ==========================================
 def make_odd(n):
     n = int(n)
     if n < 1: n = 1
@@ -238,25 +234,16 @@ def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
 
 def main():
     st.sidebar.title("Settings")
-    
-    # --- AUTO-LOAD LOGIC ---
     uploaded_files = st.sidebar.file_uploader("Upload CSV", accept_multiple_files=True, type=['csv'])
     
     files_to_process = []
     if uploaded_files:
         files_to_process = uploaded_files
-        st.sidebar.success(f"Using {len(uploaded_files)} uploads")
     else:
-        # Check defaults
         for fname in DEFAULT_FILES:
-            if os.path.exists(fname):
-                files_to_process.append(LocalFile(fname))
-        
-        if files_to_process:
-            st.sidebar.info(f"Loaded {len(files_to_process)} default files")
-        else:
-            st.sidebar.warning("No files found. Please upload or check GitHub.")
-            st.info(f"Expected: {DEFAULT_FILES}")
+            if os.path.exists(fname): files_to_process.append(LocalFile(fname))
+        if not files_to_process:
+            st.info("⚠️ AutoLoad: No files found. Please upload manually.")
             return
 
     st.sidebar.caption("Controls")
@@ -273,7 +260,7 @@ def main():
     colors, styles = ['b', 'r', 'g'], ['-', '--', '-.']
 
     st.markdown("""<h3 style='text-align: left; font-size: 20px; margin-top: -10px; margin-bottom: 10px;'>
-        Pendulum Analysis V27 (Stable)</h3>""", unsafe_allow_html=True)
+        Pendulum Analysis V28 (Light & Fast)</h3>""", unsafe_allow_html=True)
     
     processed, diffs, t_common, max_time = process_data(files_to_process, auto_sync, 0.033, 3, 5, True)
 
@@ -315,52 +302,55 @@ def main():
                     rms_txt.append(f"|{i+1}-{j+1}|={v:.2f}")
             st.markdown(f"<div style='font-size: 12px; margin-top: -5px;'>{' | '.join(stats_txt)}<br>RMS: {', '.join(rms_txt)}</div>", unsafe_allow_html=True)
 
-    # --- PLOTS ---
+    # --- PLOTS (OPTIMIZED) ---
     with plot_cont:
-        fig = plt.figure(figsize=(14, 5.0))
-        gs = fig.add_gridspec(2, 4)
-        ax_t = fig.add_subplot(gs[0, :])
-        ax_tr = fig.add_subplot(gs[1, 0])
-        ax_er = fig.add_subplot(gs[1, 1:3])
-        ax_ph = fig.add_subplot(gs[1, 3])
+        # Lower DPI for faster network transfer (80 instead of 100)
+        # Use 'fast' style to reduce rendering overhead
+        with plt.style.context('fast'):
+            fig = plt.figure(figsize=(14, 5.0), dpi=80) 
+            gs = fig.add_gridspec(2, 4)
+            ax_t = fig.add_subplot(gs[0, :])
+            ax_tr = fig.add_subplot(gs[1, 0])
+            ax_er = fig.add_subplot(gs[1, 1:3])
+            ax_ph = fig.add_subplot(gs[1, 3])
 
-        all_v = [p['x'] for i, p in enumerate(processed) if vis[i] and p['active']]
-        if all_v:
-            fx = np.concatenate(all_v)
-            fx = fx[~np.isnan(fx)]
-            if len(fx) > 0:
-                xlim = (np.min(fx), np.max(fx))
-                pad = (xlim[1]-xlim[0])*0.1 if (xlim[1]-xlim[0]) > 0 else 1
-                ax_tr.set_xlim(xlim[0]-pad, xlim[1]+pad)
-                ax_ph.set_xlim(xlim[0]-pad, xlim[1]+pad)
+            all_v = [p['x'] for i, p in enumerate(processed) if vis[i] and p['active']]
+            if all_v:
+                fx = np.concatenate(all_v)
+                fx = fx[~np.isnan(fx)]
+                if len(fx) > 0:
+                    xlim = (np.min(fx), np.max(fx))
+                    pad = (xlim[1]-xlim[0])*0.1 if (xlim[1]-xlim[0]) > 0 else 1
+                    ax_tr.set_xlim(xlim[0]-pad, xlim[1]+pad)
+                    ax_ph.set_xlim(xlim[0]-pad, xlim[1]+pad)
 
-        for i in range(3):
-            if vis[i] and processed[i]['active']:
-                p = processed[i]
-                m = (p['t'] >= start) & (p['t'] < end)
-                if np.any(m):
-                    ax_t.plot(p['t'][m], p['x'][m], c=colors[i], ls=styles[i], alpha=0.8, label=f"R{i+1}")
-                    ax_tr.plot(p['x'][m], p['y'][m], c=colors[i], ls=styles[i], alpha=0.6)
-                    ax_ph.plot(p['x'][m], p['v'][m], c=colors[i], ls=styles[i], alpha=0.5)
+            for i in range(3):
+                if vis[i] and processed[i]['active']:
+                    p = processed[i]
+                    m = (p['t'] >= start) & (p['t'] < end)
+                    if np.any(m):
+                        ax_t.plot(p['t'][m], p['x'][m], c=colors[i], ls=styles[i], alpha=0.8, label=f"R{i+1}")
+                        ax_tr.plot(p['x'][m], p['y'][m], c=colors[i], ls=styles[i], alpha=0.6)
+                        ax_ph.plot(p['x'][m], p['v'][m], c=colors[i], ls=styles[i], alpha=0.5)
 
-        td = t_common[m_c]
-        if vis[0] and vis[1]: ax_er.plot(td, diffs['12'][m_c], 'purple', label="|1-2|")
-        if vis[0] and vis[2]: ax_er.plot(td, diffs['13'][m_c], 'orange', label="|1-3|")
-        if vis[1] and vis[2]: ax_er.plot(td, diffs['23'][m_c], 'teal', ls=':', label="|2-3|")
+            td = t_common[m_c]
+            if vis[0] and vis[1]: ax_er.plot(td, diffs['12'][m_c], 'purple', label="|1-2|")
+            if vis[0] and vis[2]: ax_er.plot(td, diffs['13'][m_c], 'orange', label="|1-3|")
+            if vis[1] and vis[2]: ax_er.plot(td, diffs['23'][m_c], 'teal', ls=':', label="|2-3|")
 
-        ax_t.set_xlim(start, end); ax_t.grid(True); ax_t.legend(loc='upper right', fontsize=8)
-        ax_t.set_title(f"Time (T={start:.1f}s)", fontsize=10, pad=2)
-        ax_t.tick_params(labelsize=8)
-        
-        for ax, tit in zip([ax_tr, ax_er, ax_ph], ["Trajectory", "Errors", "Phase"]):
-            ax.set_title(tit, fontsize=9, pad=2); ax.grid(True); ax.tick_params(labelsize=7)
-        ax_er.set_xlim(start, end)
+            ax_t.set_xlim(start, end); ax_t.grid(True); ax_t.legend(loc='upper right', fontsize=8)
+            ax_t.set_title(f"Time (T={start:.1f}s)", fontsize=10, pad=2)
+            ax_t.tick_params(labelsize=8)
+            
+            for ax, tit in zip([ax_tr, ax_er, ax_ph], ["Trajectory", "Errors", "Phase"]):
+                ax.set_title(tit, fontsize=9, pad=2); ax.grid(True); ax.tick_params(labelsize=7)
+            ax_er.set_xlim(start, end)
 
-        plt.subplots_adjust(left=0.05, right=0.99, top=0.92, bottom=0.08, hspace=0.3, wspace=0.2)
-        st.pyplot(fig)
-        
-        # --- MEMORY LEAK FIX ---
-        plt.close(fig)
+            plt.subplots_adjust(left=0.05, right=0.99, top=0.92, bottom=0.08, hspace=0.3, wspace=0.2)
+            st.pyplot(fig)
+            
+            # MEMORY CLEANUP
+            plt.close(fig)
 
 if __name__ == "__main__":
     main()
