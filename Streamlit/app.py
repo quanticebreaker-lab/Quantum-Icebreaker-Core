@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# ROBUST MATH UTILS (COPIED FROM V20.4)
+# ROBUST MATH UTILS
 # ==========================================
 def make_odd(n):
     n = int(n)
@@ -131,7 +131,7 @@ def get_local_activity(t, x, start, end, threshold):
     return p2p > threshold, p2p
 
 # ==========================================
-# FILE LOADING (ADAPTED FOR WEB)
+# FILE LOADING
 # ==========================================
 def smart_find_column(header, candidates):
     header_lower = [h.lower().strip() for h in header]
@@ -141,13 +141,11 @@ def smart_find_column(header, candidates):
     return None
 
 def parse_uploaded_file(uploaded_file):
-    """Parses a Streamlit UploadedFile object."""
     times, xs, ys = [], [], []
     if uploaded_file is None:
         return np.array([]), np.array([]), np.array([])
     
     try:
-        # Convert bytes to string buffer
         content = uploaded_file.getvalue().decode('utf-8')
         f = io.StringIO(content)
         reader = csv.reader(f)
@@ -183,22 +181,15 @@ def parse_uploaded_file(uploaded_file):
 # ==========================================
 @st.cache_data
 def process_data(uploaded_files, auto_sync, resample_dt, polyorder, median_kernel, use_median):
-    """
-    Heavy lifting: Loading, Syncing, Filtering.
-    Runs once when files change.
-    """
     raw_data = []
-    
-    # Ensure we always have 3 slots, even if empty
     for i in range(3):
         if i < len(uploaded_files):
             t, x, y = parse_uploaded_file(uploaded_files[i])
-            if len(t) > 0: t -= t[0] # Zero start
+            if len(t) > 0: t -= t[0]
             raw_data.append({'t': t, 'x': x, 'y': y, 'name': uploaded_files[i].name})
         else:
             raw_data.append({'t': np.array([]), 'x': np.array([]), 'y': np.array([]), 'name': f"Run {i+1}"})
 
-    # 1. Sync
     if auto_sync and len(raw_data[0]['t']) > 0:
         ref_t, ref_x = raw_data[0]['t'], raw_data[0]['x']
         for i in [1, 2]:
@@ -206,7 +197,6 @@ def process_data(uploaded_files, auto_sync, resample_dt, polyorder, median_kerne
                 lag = sync_signals_fft(ref_t, ref_x, raw_data[i]['t'], raw_data[i]['x'], resample_dt)
                 raw_data[i]['t'] -= lag
 
-    # 2. Filter & Calculate Velocities/Peaks
     processed = []
     max_t = 0.0
     
@@ -214,68 +204,48 @@ def process_data(uploaded_files, auto_sync, resample_dt, polyorder, median_kerne
         t, x, y = d['t'], d['x'], d['y']
         
         if len(t) == 0:
-            processed.append({
-                't': t, 'x': x, 'y': y, 'v': np.array([]), 
-                'peaks': np.array([]), 'damping': (0.0, 0),
-                'active': False
-            })
+            processed.append({'t': t, 'x': x, 'y': y, 'v': np.array([]), 'peaks': np.array([]), 'damping': (0.0, 0), 'active': False})
             continue
             
         max_t = max(max_t, t[-1])
         dt = get_sampling_rate(t)
         win = calculate_adaptive_window(dt, polyorder)
         
-        # Median Filter
         if use_median:
             k = make_odd(median_kernel)
             if len(x) > k: x, y = medfilt(x, k), medfilt(y, k)
         
-        # SavGol Filter
         xf = safe_savgol(x, win, polyorder)
         yf = safe_savgol(y, win, polyorder)
         
-        # Velocity
         if len(xf) > win:
             vf = savgol_filter(xf, win, polyorder, deriv=1, delta=dt)
         else:
             vf = np.zeros_like(xf)
             
-        # Peaks & Damping
         pks = pre_calculate_peaks(xf)
         damp = calculate_damping_robust(t, xf, pks, max_time=None)
         
-        processed.append({
-            't': t, 'x': xf, 'y': yf, 'v': vf, 
-            'peaks': pks, 'damping': damp,
-            'active': True
-        })
+        processed.append({'t': t, 'x': xf, 'y': yf, 'v': vf, 'peaks': pks, 'damping': damp, 'active': True})
 
-    # 3. Calculate Diffs (Interpolation)
     t_common = np.arange(0, max_t, resample_dt)
-    xi = []
-    for d in processed:
-        xi.append(safe_interp(d['t'], d['x'], t_common))
+    xi = [safe_interp(d['t'], d['x'], t_common) for d in processed]
     
     diffs = {
         '12': np.abs(xi[0]-xi[1]), 
         '13': np.abs(xi[0]-xi[2]), 
         '23': np.abs(xi[1]-xi[2])
     }
-    
-    # Smooth diffs
     for k in diffs:
-        if len(diffs[k]) > 31: 
-            diffs[k] = savgol_filter(diffs[k], 31, 3)
+        if len(diffs[k]) > 31: diffs[k] = savgol_filter(diffs[k], 31, 3)
 
     return processed, diffs, t_common, max_t
 
 # ==========================================
-# UI & PLOTTING
+# UI & PLOTTING (LAYOUT FIXED)
 # ==========================================
 def main():
     st.sidebar.title("🔧 Settings")
-    
-    # --- Sidebar: Controls ---
     uploaded_files = st.sidebar.file_uploader("Upload CSV Files (Max 3)", accept_multiple_files=True, type=['csv'])
     
     st.sidebar.subheader("Parameters")
@@ -296,159 +266,112 @@ def main():
     colors = ['b', 'r', 'g']
     styles = ['-', '--', '-.']
 
-    # --- Main Area ---
     st.title("Pendulum Analysis Dashboard V20.Web")
 
     if not uploaded_files:
         st.info("👋 Please upload CSV files in the sidebar to start analysis.")
         return
 
-    # Process Data
     processed, diffs, t_common, max_time = process_data(
         uploaded_files, auto_sync, resample_dt, sg_poly, 5, use_median
     )
 
-    # --- Time Slider ---
-    start_time = st.slider("Time Navigator (seconds)", 0.0, max(0.0, max_time - window_size), 0.0, step=0.5)
-    end_time = start_time + window_size
+    # === LAYOUT CONTAINERS ===
+    # 1. Plot Area (Top)
+    plot_container = st.container()
     
-    # --- Statistics Calculation (Dynamic) ---
-    st.markdown("### 📊 Statistics & Errors")
+    # 2. Controls Area (Middle) - Just below plots
+    nav_container = st.container()
     
-    # Columns for stats
-    c1, c2, c3 = st.columns(3)
-    
-    stats_data = []
-    
-    # 1. Damping & Period Stats
-    for i in range(3):
-        if not visible_flags[i] or not processed[i]['active']: continue
-        
-        p = processed[i]
-        # Check local activity
-        is_moving, _ = get_local_activity(p['t'], p['x'], start_time, end_time, stop_thresh)
-        
-        # Calculate Period
-        T, c = (None, 0)
-        if is_moving:
-            T, c = calculate_robust_period(p['t'], p['peaks'], start_time, end_time)
-        
-        damp_val = p['damping'][0]
-        per_str = f"{T:.4f}s" if T else "-"
-        
-        stats_data.append({
-            "Run": f"Run {i+1}",
-            "Damping": f"{damp_val:.5f}",
-            "Period (Local)": per_str,
-            "Cycles": c
-        })
+    # 3. Statistics Area (Bottom)
+    stats_container = st.container()
 
-    # 2. RMS Errors
-    rms_data = {}
-    mask_common = (t_common >= start_time) & (t_common < end_time)
-    
-    pairs = [(0, 1, '12'), (0, 2, '13'), (1, 2, '23')]
-    for i, j, k in pairs:
-        if visible_flags[i] and visible_flags[j] and processed[i]['active'] and processed[j]['active']:
-            seg = diffs[k][mask_common]
-            val = np.sqrt(np.mean(seg**2)) if len(seg) > 0 else 0.0
-            rms_data[f"|R{i+1}-R{j+1}|"] = f"{val:.2f}"
+    # --- RENDER SLIDER (Into nav_container) ---
+    with nav_container:
+        st.write("---") # Separator
+        start_time = st.slider("Time Navigator (seconds)", 0.0, max(0.0, max_time - window_size), 0.0, step=0.5)
+        end_time = start_time + window_size
 
-    # Display Stats
-    with c1:
-        st.markdown("**Single Run Stats**")
-        st.dataframe(pd.DataFrame(stats_data), hide_index=True)
-    
-    with c2:
-        st.markdown("**RMS Deviation (Window)**")
-        if rms_data:
+    # --- CALCULATE & RENDER PLOTS (Into plot_container) ---
+    with plot_container:
+        fig = plt.figure(figsize=(14, 8)) # Increased width slightly
+        gs = fig.add_gridspec(2, 3)
+        ax_time = fig.add_subplot(gs[0, :])
+        ax_traj = fig.add_subplot(gs[1, 0])
+        ax_err = fig.add_subplot(gs[1, 1])
+        ax_phase = fig.add_subplot(gs[1, 2])
+        
+        # Calculate Limits
+        all_x, all_y, all_v = [], [], []
+        for i in range(3):
+            if visible_flags[i] and processed[i]['active']:
+                all_x.append(processed[i]['x'])
+                all_y.append(processed[i]['y'])
+                all_v.append(processed[i]['v'])
+        
+        if all_x:
+            flat_x, flat_y, flat_v = np.concatenate(all_x), np.concatenate(all_y), np.concatenate(all_v)
+            xlim, ylim, vlim = (np.min(flat_x), np.max(flat_x)), (np.min(flat_y), np.max(flat_y)), (np.min(flat_v), np.max(flat_v))
+            pad_x, pad_y, pad_v = (xlim[1]-xlim[0])*0.1, (ylim[1]-ylim[0])*0.1, (vlim[1]-vlim[0])*0.1
+            ax_traj.set_xlim(xlim[0]-pad_x, xlim[1]+pad_x)
+            ax_traj.set_ylim(ylim[1]+pad_y, ylim[0]-pad_y)
+            ax_phase.set_xlim(xlim[0]-pad_x, xlim[1]+pad_x)
+            ax_phase.set_ylim(vlim[0]-pad_v, vlim[1]+pad_v)
+
+        for i in range(3):
+            if not visible_flags[i] or not processed[i]['active']: continue
+            p = processed[i]
+            mask = (p['t'] >= start_time) & (p['t'] < end_time)
+            t_s, x_s, y_s, v_s = p['t'][mask], p['x'][mask], p['y'][mask], p['v'][mask]
+            if len(t_s) > 0:
+                ax_time.plot(t_s, x_s, color=colors[i], ls=styles[i], alpha=0.8, label=f"Run {i+1}")
+                ax_traj.plot(x_s, y_s, color=colors[i], ls=styles[i], alpha=0.6)
+                ax_phase.plot(x_s, v_s, color=colors[i], ls=styles[i], alpha=0.5)
+
+        t_d = t_common[(t_common >= start_time) & (t_common < end_time)]
+        mask_common = (t_common >= start_time) & (t_common < end_time)
+        if visible_flags[0] and visible_flags[1]: ax_err.plot(t_d, diffs['12'][mask_common], 'purple', label="|R1-R2|")
+        if visible_flags[0] and visible_flags[2]: ax_err.plot(t_d, diffs['13'][mask_common], 'orange', label="|R1-R3|")
+        if visible_flags[1] and visible_flags[2]: ax_err.plot(t_d, diffs['23'][mask_common], 'teal', ls=':', label="|R2-R3|")
+
+        ax_time.set_title(f"Time Domain (T: {start_time:.1f}s)"); ax_time.grid(True); ax_time.set_xlim(start_time, end_time)
+        ax_traj.set_title("Trajectory"); ax_traj.grid(True)
+        ax_err.set_title("Deviations"); ax_err.grid(True); ax_err.set_xlim(start_time, end_time)
+        ax_phase.set_title("Phase Space"); ax_phase.grid(True)
+        
+        plt.tight_layout()
+        st.pyplot(fig)
+
+    # --- CALCULATE & RENDER STATS (Into stats_container) ---
+    with stats_container:
+        st.markdown("### 📊 Statistics")
+        c1, c2 = st.columns(2)
+        
+        stats_list = []
+        for i in range(3):
+            if visible_flags[i] and processed[i]['active']:
+                p = processed[i]
+                is_moving, _ = get_local_activity(p['t'], p['x'], start_time, end_time, stop_thresh)
+                T, c = (calculate_robust_period(p['t'], p['peaks'], start_time, end_time) if is_moving else (None, 0))
+                stats_list.append({
+                    "Run": f"Run {i+1}",
+                    "Damping": f"{p['damping'][0]:.5f}",
+                    "Period": f"{T:.4f}s" if T else "-",
+                    "Cycles": c
+                })
+        
+        rms_data = {}
+        for i, j, k in [(0, 1, '12'), (0, 2, '13'), (1, 2, '23')]:
+            if visible_flags[i] and visible_flags[j] and processed[i]['active'] and processed[j]['active']:
+                seg = diffs[k][mask_common]
+                val = np.sqrt(np.mean(seg**2)) if len(seg) > 0 else 0.0
+                rms_data[f"|R{i+1}-R{j+1}|"] = f"{val:.2f}"
+
+        with c1:
+            st.table(pd.DataFrame(stats_list))
+        with c2:
+            st.write("**RMS Errors (Window):**")
             st.json(rms_data)
-        else:
-            st.caption("Enable multiple runs to see deviation.")
-
-    # --- Plotting ---
-    fig = plt.figure(figsize=(12, 8))
-    gs = fig.add_gridspec(2, 3)
-    
-    # Axes
-    ax_time = fig.add_subplot(gs[0, :])
-    ax_traj = fig.add_subplot(gs[1, 0])
-    ax_err = fig.add_subplot(gs[1, 1])
-    ax_phase = fig.add_subplot(gs[1, 2])
-    
-    # Limits logic
-    all_x, all_y, all_v = [], [], []
-    for i in range(3):
-        if visible_flags[i] and processed[i]['active']:
-            all_x.append(processed[i]['x'])
-            all_y.append(processed[i]['y'])
-            all_v.append(processed[i]['v'])
-            
-    if all_x:
-        flat_x = np.concatenate(all_x)
-        flat_y = np.concatenate(all_y)
-        flat_v = np.concatenate(all_v)
-        
-        xlim = (np.min(flat_x), np.max(flat_x))
-        ylim = (np.min(flat_y), np.max(flat_y))
-        vlim = (np.min(flat_v), np.max(flat_v))
-        
-        pad_x = (xlim[1]-xlim[0])*0.1 if (xlim[1]-xlim[0])>0 else 10
-        pad_y = (ylim[1]-ylim[0])*0.1 if (ylim[1]-ylim[0])>0 else 10
-        pad_v = (vlim[1]-vlim[0])*0.1 if (vlim[1]-vlim[0])>0 else 0.5
-        
-        ax_traj.set_xlim(xlim[0]-pad_x, xlim[1]+pad_x)
-        ax_traj.set_ylim(ylim[1]+pad_y, ylim[0]-pad_y) # Inverted Y
-        
-        ax_phase.set_xlim(xlim[0]-pad_x, xlim[1]+pad_x)
-        ax_phase.set_ylim(vlim[0]-pad_v, vlim[1]+pad_v)
-
-    # Plot Loop
-    for i in range(3):
-        if not visible_flags[i] or not processed[i]['active']: continue
-        
-        p = processed[i]
-        mask = (p['t'] >= start_time) & (p['t'] < end_time)
-        
-        t_seg = p['t'][mask]
-        x_seg = p['x'][mask]
-        y_seg = p['y'][mask]
-        v_seg = p['v'][mask]
-        
-        if len(t_seg) > 0:
-            ax_time.plot(t_seg, x_seg, color=colors[i], ls=styles[i], alpha=0.8, label=f"Run {i+1}")
-            ax_traj.plot(x_seg, y_seg, color=colors[i], ls=styles[i], alpha=0.6)
-            ax_phase.plot(x_seg, v_seg, color=colors[i], ls=styles[i], alpha=0.5)
-
-    # Plot Errors
-    t_d = t_common[mask_common]
-    if visible_flags[0] and visible_flags[1]:
-        ax_err.plot(t_d, diffs['12'][mask_common], color='purple', label="|R1-R2|")
-    if visible_flags[0] and visible_flags[2]:
-        ax_err.plot(t_d, diffs['13'][mask_common], color='orange', label="|R1-R3|")
-    if visible_flags[1] and visible_flags[2]:
-        ax_err.plot(t_d, diffs['23'][mask_common], color='teal', ls=':', label="|R2-R3|")
-
-    # Titles & Formatting
-    ax_time.set_title("Time Domain")
-    ax_time.set_ylabel("Position X")
-    ax_time.set_xlim(start_time, end_time)
-    ax_time.legend(loc='upper right')
-    ax_time.grid(True)
-    
-    ax_traj.set_title("Trajectory (X vs Y)")
-    ax_traj.grid(True)
-    
-    ax_err.set_title("Deviations")
-    ax_err.set_xlim(start_time, end_time)
-    ax_err.grid(True)
-    ax_err.legend()
-    
-    ax_phase.set_title("Phase Space (X vs V)")
-    ax_phase.grid(True)
-    
-    plt.tight_layout()
-    st.pyplot(fig)
 
 if __name__ == "__main__":
     main()
