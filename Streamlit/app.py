@@ -11,15 +11,15 @@ import os
 # CONFIGURATION
 # ==========================================
 st.set_page_config(
-    page_title="Pendulum V25 Web",
+    page_title="Pendulum V27 Stable",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Имена файлов по умолчанию
+# ИМЕНА ФАЙЛОВ НА GITHUB
 DEFAULT_FILES = ["run1.csv", "run2.csv", "run3.csv"] 
 
-# --- CSS: COMPACT LAYOUT + BUTTONS FIX ---
+# --- CSS ---
 st.markdown("""
         <style>
                .block-container {
@@ -33,7 +33,6 @@ st.markdown("""
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
                 
-                /* Центрируем кнопки навигации по вертикали относительно слайдера */
                 div.stButton > button {
                     height: 100%;
                     padding-top: 10px;
@@ -55,7 +54,7 @@ class LocalFile:
         with open(self.path, 'rb') as f: return f.read()
 
 # ==========================================
-# MATH UTILS (ROBUST)
+# MATH UTILS
 # ==========================================
 def make_odd(n):
     n = int(n)
@@ -94,7 +93,7 @@ def get_sampling_rate(t):
     dt = np.median(np.diff(t))
     return dt if dt > 0 else 0.033
 
-# --- SMART SYNC (First Peak) ---
+# --- SYNC ---
 def get_first_major_peak_time(t, x):
     if len(x) < 5: return None
     x_clean = x.copy()
@@ -154,7 +153,7 @@ def get_local_activity(t, x, start, end, threshold):
     return (np.nanmax(seg) - np.nanmin(seg)) > threshold, 0.0
 
 # ==========================================
-# FILE LOADING
+# FILE PARSING
 # ==========================================
 def smart_find_column(header, candidates):
     header_lower = [h.lower().strip() for h in header]
@@ -237,62 +236,62 @@ def process_data(file_objects, auto_sync, resample_dt, poly, med_k, use_med):
             diffs[k] = savgol_filter(diffs[k], 31, 3)
     return processed, diffs, t_com, max_t
 
-# ==========================================
-# UI
-# ==========================================
 def main():
     st.sidebar.title("Settings")
+    
+    # --- AUTO-LOAD LOGIC ---
     uploaded_files = st.sidebar.file_uploader("Upload CSV", accept_multiple_files=True, type=['csv'])
     
     files_to_process = []
     if uploaded_files:
         files_to_process = uploaded_files
+        st.sidebar.success(f"Using {len(uploaded_files)} uploads")
     else:
+        # Check defaults
         for fname in DEFAULT_FILES:
-            if os.path.exists(fname): files_to_process.append(LocalFile(fname))
-        if not files_to_process:
-            st.info("⚠️ Upload CSV or add files to GitHub.")
+            if os.path.exists(fname):
+                files_to_process.append(LocalFile(fname))
+        
+        if files_to_process:
+            st.sidebar.info(f"Loaded {len(files_to_process)} default files")
+        else:
+            st.sidebar.warning("No files found. Please upload or check GitHub.")
+            st.info(f"Expected: {DEFAULT_FILES}")
             return
 
+    st.sidebar.caption("Controls")
     auto_sync = st.sidebar.checkbox("Smart Sync", value=True)
     window_size = st.sidebar.number_input("Window (s)", value=20.0, min_value=1.0)
     
+    with st.sidebar.expander("Filter Params"):
+        resample_dt = st.number_input("DT", value=0.033)
+        sg_poly = st.number_input("Poly", value=3)
+        use_median = st.checkbox("Median", value=True)
+        stop_thresh = st.number_input("Stop Thresh", value=3.0)
+
     vis = [st.sidebar.checkbox(f"R{i+1}", True) for i in range(3)]
     colors, styles = ['b', 'r', 'g'], ['-', '--', '-.']
 
-    # Header
     st.markdown("""<h3 style='text-align: left; font-size: 20px; margin-top: -10px; margin-bottom: 10px;'>
-        Pendulum Analysis V25 (Nav)</h3>""", unsafe_allow_html=True)
+        Pendulum Analysis V27 (Stable)</h3>""", unsafe_allow_html=True)
     
     processed, diffs, t_common, max_time = process_data(files_to_process, auto_sync, 0.033, 3, 5, True)
 
     plot_cont = st.container()
     ctrl_cont = st.container()
 
-    # --- CONTROLS: BUTTONS + SLIDER + STATS ---
+    # --- CONTROLS ---
     with ctrl_cont:
-        # Initialize session state for slider
-        if 'start_time' not in st.session_state:
-            st.session_state.start_time = 0.0
-            
+        if 'start_time' not in st.session_state: st.session_state.start_time = 0.0
         def move_slider(delta):
             new_val = st.session_state.start_time + delta
-            # Clamp value
             max_val = max(0.0, max_time - window_size)
             st.session_state.start_time = max(0.0, min(max_val, new_val))
 
-        # Layout: [ < ] [ SLIDER ] [ > ] [ STATS ]
-        # We use columns: Tiny, Large, Tiny, Medium
         c_prev, c_slider, c_next, c_stats = st.columns([1, 15, 1, 8])
-        
-        with c_prev:
-            st.button("⏪", on_click=move_slider, args=(-window_size/2,))
-            
-        with c_next:
-            st.button("⏩", on_click=move_slider, args=(window_size/2,))
-            
+        with c_prev: st.button("⏪", on_click=move_slider, args=(-window_size/2,))
+        with c_next: st.button("⏩", on_click=move_slider, args=(window_size/2,))
         with c_slider:
-            # Bind slider to session_state
             start = st.slider("Time Navigator", 0.0, max(0.0, max_time - window_size), 
                               key='start_time', step=0.5, label_visibility="collapsed")
             end = start + window_size
@@ -314,8 +313,6 @@ def main():
                     seg = seg[~np.isnan(seg)]
                     v = np.sqrt(np.mean(seg**2)) if len(seg) > 0 else 0.0
                     rms_txt.append(f"|{i+1}-{j+1}|={v:.2f}")
-            
-            # Show simplified stats
             st.markdown(f"<div style='font-size: 12px; margin-top: -5px;'>{' | '.join(stats_txt)}<br>RMS: {', '.join(rms_txt)}</div>", unsafe_allow_html=True)
 
     # --- PLOTS ---
@@ -361,6 +358,9 @@ def main():
 
         plt.subplots_adjust(left=0.05, right=0.99, top=0.92, bottom=0.08, hspace=0.3, wspace=0.2)
         st.pyplot(fig)
+        
+        # --- MEMORY LEAK FIX ---
+        plt.close(fig)
 
 if __name__ == "__main__":
     main()
