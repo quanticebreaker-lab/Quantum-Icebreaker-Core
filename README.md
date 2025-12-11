@@ -1,33 +1,80 @@
-# Quantum Icebreaker: Core Workspace
+# Quantum Icebreaker: Decompiling Reality
 
-Welcome to the central repository for the **Quantum Icebreaker** research initiative. This is a private workspace for the core crew, designed for collaboration on the theoretical, practical, and organizational aspects of our project.
+### Discrete Physics Hypothesis & Live Observer Experiment
 
-## 🚀 About the Project
+**Quantum Icebreaker** is an open research initiative exploring the hypothesis that physical reality acts as a computational interface. We investigate whether "fundamental constants" are actually resolution limits of the Observer, and whether attention can influence physical systems.
 
-**Quantum Icebreaker** is an open, international research expedition aimed at exploring the nature of reality and the observer's role in its actualization. Our key hypothesis is that reality is not a static collection of objects, but a dynamic, participatory process that can be described as a "programmable interface."
+---
 
-This repository serves as our main "headquarters" for transitioning from a philosophical concept to a falsifiable scientific experiment.
+## 📐 The Hypothesis: Physics as Code
+
+We propose that the Universe operates on a discrete grid defined by the **Observer's Resolution (The Genome)**. In this model, physical constants are not arbitrary input parameters, but derived ratios of base scales and the **System Clock ($N_0$)**.
+
+### The Core Derivation
+We strip away standard physical coefficients and reduce physics to two layers:
+1.  **Resolution Limits (Base Scales):** $m_0$ (mass), $r_0$ (length), $t_0$ (time).
+2.  **Evolution Factor:** The System Clock counter ($N_0$).
+
+**Key Results (matching CODATA):**
+* **Speed of Light ($c$):** Derived as the grid update ratio: $c = r_0 / t_0$.
+* **Planck Constant ($h$):** Derived from the interaction of the System Clock with base resolution.
+* **Fine-Structure Constant ($\alpha$):** Defined as the ratio between the Prime Counter ($N_0$) and the Charge Counter ($N_q$).
+
+> *Full mathematical derivation and comparison tables are available in the `/docs` folder or on the project website.*
+
+---
+
+## 🔭 The Experiment: Quantum Icebreaker
+
+To move from philosophy to falsifiable science, we built a physical experimental setup designed to detect potential correlations between **Observer Attention** and **Macro-physical noise**.
+
+### The Setup
+* **Hardware:** A 3kg steel pendulum suspended on a 2-meter cable (isolated anchor).
+* **Tracking:** Custom Computer Vision software (Python/OpenCV) tracking the pendulum's trajectory with sub-pixel precision.
+* **Objective:** To measure entropy and energy fluctuations in the pendulum's decay phase and cross-reference them with periods of focused collective attention.
+
+### Tech Stack
+* **Language:** Python 3.9+
+* **Computer Vision:** OpenCV (`cv2`) for real-time coordinate tracking.
+* **Data Processing:** NumPy / Pandas for trajectory analysis.
+* **Streaming:** Flask + FFmpeg for live data broadcasting.
 
 ---
 
 ## 📂 Repository Structure
 
-This monorepo contains all the key components of the project:
-
-* **/docs:** This is where the foundational theoretical documents are stored.
-    * **Manifesto:** The full version, outlining the philosophical and mathematical foundation of our model.
-    * **Guide:** A practical document describing the methodology and ethics of the collective experiments.
-* **/experiment-krystall:** Source code and materials for our pilot experiment, "Krystall." The goal of the experiment is to test whether coherent collective attention can introduce measurable order into a chaotic digital system.
-* **/website:** Source files for our official website.
+* `/tracker`: Python source code for the pendulum tracking system (OpenCV).
+* `/analysis`: Jupyter notebooks for data analysis and comparison (Streamlit apps).
+* `/docs`: Theoretical foundations, the "Manifesto," and mathematical derivations.
+* `/website`: Source code for [q-icebreaker.com](https://q-icebreaker.com).
 
 ---
 
-## 🎯 Current Focus
+## 🚀 Getting Started (Tracker)
 
-At this stage, our primary task is the collaborative refinement of the "Krystall" experiment protocol to ensure it is methodologically sound and ready for launch.
+If you want to replicate the tracking code or analyze our data:
 
-All discussions on specific tasks are held in the **[Issues](https://github.com/quanticebreaker-lab/Quantum-Icebreaker-Core/issues)** tab.
+1.  **Clone the repo:**
+    ```bash
+    git clone [https://github.com/quanticebreaker-lab/Quantum-Icebreaker-Core.git](https://github.com/quanticebreaker-lab/Quantum-Icebreaker-Core.git)
+    ```
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  **Run the tracker (example):**
+    ```bash
+    python tracker/main.py --source 0
+    ```
 
 ---
 
-Thank you for being with us on this expedition!
+## 🔗 Links & Resources
+
+* **Project Website:** [https://q-icebreaker.com](https://q-icebreaker.com)
+* **Mathematical Proofs:** [https://q-icebreaker.com/math.html](https://q-icebreaker.com/math.html)
+* **Discussion:** Check the [Issues](https://github.com/quanticebreaker-lab/Quantum-Icebreaker-Core/issues) tab for current R&D tasks.
+
+---
+
+*Disclaimer: This project explores the boundaries between physics and consciousness. While the code is standard engineering, the hypothesis implies a departure from the standard materialist model.*
